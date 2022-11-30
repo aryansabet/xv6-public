@@ -12,6 +12,7 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
+
 static struct proc *initproc;
 
 int nextpid = 1;
@@ -531,4 +532,39 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+//current process status
+int
+proc_dump()
+{
+  struct proc *p;
+  int i , j;
+  int n = 0;
+  struct proc_info* pinfo_list;
+  sti();
+  acquire(&ptable.lock);
+  argptr(0,(char**)&pinfo_list,64 * sizeof(struct proc_info));
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if ((p->state == RUNNABLE || p->state == RUNNING))
+    {
+      pinfo_list[n].memsize = p->sz;
+      pinfo_list[n].pid = p->pid;
+      n +=1;
+    }
+  }
+  for(i = 0; i < n ; i++)
+  {
+    for(j = i - 1;j >= 0 && (pinfo_list[j].memsize > pinfo_list[i].memsize  || (pinfo_list[j].memsize == pinfo_list[i].memsize  && pinfo_list[j].pid > pinfo_list[i].pid )); j--)
+    {
+      pinfo_list[j + 1].pid = pinfo_list[j].pid;
+      pinfo_list[j + 1].memsize = pinfo_list[j].memsize;
+    }
+  }
+  cprintf("pid \t memsize \t\n");
+  for (i = 0; i < n; i++)
+    cprintf("%d \t %d\n" , pinfo_list[i].pid, pinfo_list[i].memsize);
+  release(&ptable.lock);
+  return 22;
 }
